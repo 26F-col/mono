@@ -237,6 +237,11 @@ compatible set (see `docs/DEPENDENCIES.md`).
 Privacy is core to the thesis — but a truthful partially-confidential working
 prototype beats a broken application pretending to have perfect privacy.
 
+## Team: what's built, what's next
+
+See [BACKLOG.md](BACKLOG.md) — shipped features, in-flight work, and the
+prioritized backlog (P0/P1/P2) with definitions of done.
+
 ## License
 
 MIT — see [LICENSE](LICENSE). Hackathon prototype: use at your own risk, expect no support.
