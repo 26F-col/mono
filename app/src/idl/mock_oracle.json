@@ -1,0 +1,338 @@
+{
+  "address": "2fYvWaHejSYB1RNzsjrpQBMkmSNTXbYV9FWkRYXSj6Do",
+  "metadata": {
+    "name": "mock_oracle",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Deterministic mock price oracle with market-session state (demo only)"
+  },
+  "instructions": [
+    {
+      "name": "initialize_feed",
+      "discriminator": [
+        167,
+        251,
+        140,
+        58,
+        66,
+        138,
+        187,
+        95
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "feed",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "symbol",
+          "type": {
+            "array": [
+              "u8",
+              8
+            ]
+          }
+        },
+        {
+          "name": "price_cents",
+          "type": "u64"
+        },
+        {
+          "name": "staleness_window_slots",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_market_session",
+      "docs": [
+        "Move the underlying market between open / extended / closed."
+      ],
+      "discriminator": [
+        52,
+        134,
+        221,
+        38,
+        12,
+        181,
+        135,
+        74
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "feed"
+          ]
+        },
+        {
+          "name": "feed",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "market_session",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "set_price",
+      "docs": [
+        "Publish a new price; refreshes freshness (a real oracle publish does both)",
+        "and clears any outage flag."
+      ],
+      "discriminator": [
+        16,
+        19,
+        182,
+        8,
+        149,
+        83,
+        72,
+        181
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "feed"
+          ]
+        },
+        {
+          "name": "feed",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "price_cents",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "simulate_stale_feed",
+      "docs": [
+        "DEMO CONTROL ONLY: flag the feed as in outage so it reads as stale.",
+        "Cleared by the next real publish (set_price)."
+      ],
+      "discriminator": [
+        9,
+        191,
+        29,
+        239,
+        28,
+        30,
+        177,
+        147
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "feed"
+          ]
+        },
+        {
+          "name": "feed",
+          "writable": true
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "PriceFeed",
+      "discriminator": [
+        189,
+        103,
+        252,
+        23,
+        152,
+        35,
+        243,
+        156
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "FeedMarkedStale",
+      "discriminator": [
+        221,
+        203,
+        46,
+        61,
+        89,
+        56,
+        122,
+        61
+      ]
+    },
+    {
+      "name": "MarketSessionChanged",
+      "discriminator": [
+        213,
+        77,
+        94,
+        164,
+        4,
+        144,
+        198,
+        183
+      ]
+    },
+    {
+      "name": "PriceUpdated",
+      "discriminator": [
+        154,
+        72,
+        87,
+        150,
+        246,
+        230,
+        23,
+        217
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidSession",
+      "msg": "invalid market session value"
+    }
+  ],
+  "types": [
+    {
+      "name": "FeedMarkedStale",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "symbol",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketSessionChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "symbol",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "market_session",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PriceFeed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "symbol",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "price_cents",
+            "docs": [
+              "USD cents per share (price * 100)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "publish_slot",
+            "type": "u64"
+          },
+          {
+            "name": "market_session",
+            "docs": [
+              "0 = US market open, 1 = extended hours, 2 = closed / weekend."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "staleness_window_slots",
+            "type": "u64"
+          },
+          {
+            "name": "outage",
+            "docs": [
+              "DEMO: oracle outage flag (until the next publish)."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PriceUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "symbol",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "price_cents",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}

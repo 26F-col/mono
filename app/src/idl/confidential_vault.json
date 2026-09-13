@@ -1,0 +1,1036 @@
+{
+  "address": "F5vxqZkc4tL4RxMjapgA4LM1qL3mskKur4RY6pjeyy4L",
+  "metadata": {
+    "name": "confidential_vault",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Confidential collateral vault for tokenized equities (hackathon prototype)"
+  },
+  "instructions": [
+    {
+      "name": "commit_portfolio",
+      "docs": [
+        "Register a hash commitment to the current portfolio snapshot.",
+        "`portfolio_hash` = sha256(client-encrypted portfolio blob ++ domain tag),",
+        "computed off-chain. Program state never sees quantities."
+      ],
+      "discriminator": [
+        52,
+        15,
+        217,
+        204,
+        187,
+        182,
+        119,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "institution",
+          "signer": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "institution"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "portfolio_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "deposit_collateral",
+      "docs": [
+        "Lock collateral: move tokens into the vault's custody ATA.",
+        "Publicly visible: that tokens moved (see README leak section)."
+      ],
+      "discriminator": [
+        156,
+        131,
+        142,
+        116,
+        146,
+        247,
+        162,
+        120
+      ],
+      "accounts": [
+        {
+          "name": "institution",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "institution"
+              }
+            ]
+          }
+        },
+        {
+          "name": "policy"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "source",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "institution"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "custody",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_policy",
+      "docs": [
+        "Create a public risk policy. Policies are PUBLIC data: the parameters",
+        "are what a lender's margin policy requires; they reveal nothing about",
+        "any single portfolio."
+      ],
+      "discriminator": [
+        9,
+        186,
+        86,
+        225,
+        129,
+        162,
+        231,
+        56
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "policy",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "policy_id",
+          "type": {
+            "array": [
+              "u8",
+              8
+            ]
+          }
+        },
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "PolicyParams"
+            }
+          }
+        },
+        {
+          "name": "assets",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "PolicyAsset"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_vault",
+      "docs": [
+        "Open a confidential collateral vault for the institution."
+      ],
+      "discriminator": [
+        48,
+        191,
+        163,
+        44,
+        71,
+        129,
+        63,
+        164
+      ],
+      "accounts": [
+        {
+          "name": "institution",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "institution"
+              }
+            ]
+          }
+        },
+        {
+          "name": "policy"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_policy",
+      "docs": [
+        "Policy authority may re-tune prototype risk parameters."
+      ],
+      "discriminator": [
+        212,
+        245,
+        246,
+        7,
+        163,
+        151,
+        18,
+        57
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "policy"
+          ]
+        },
+        {
+          "name": "policy",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "PolicyParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "withdraw_collateral",
+      "docs": [
+        "Withdraw collateral back to the institution.",
+        "PROTOTYPE LIMITATION: not gated on facility health; a production system",
+        "would require a repayment / release attestation from the credit layer."
+      ],
+      "discriminator": [
+        115,
+        135,
+        168,
+        106,
+        139,
+        214,
+        138,
+        150
+      ],
+      "accounts": [
+        {
+          "name": "institution",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "institution"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "source",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "institution"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "custody",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "RiskPolicy",
+      "discriminator": [
+        36,
+        66,
+        86,
+        72,
+        195,
+        245,
+        148,
+        55
+      ]
+    },
+    {
+      "name": "Vault",
+      "discriminator": [
+        211,
+        8,
+        232,
+        43,
+        2,
+        152,
+        117,
+        119
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "CollateralDeposited",
+      "discriminator": [
+        244,
+        62,
+        77,
+        11,
+        135,
+        112,
+        61,
+        96
+      ]
+    },
+    {
+      "name": "CollateralWithdrawn",
+      "discriminator": [
+        51,
+        224,
+        133,
+        106,
+        74,
+        173,
+        72,
+        82
+      ]
+    },
+    {
+      "name": "PolicyInitialized",
+      "discriminator": [
+        102,
+        184,
+        59,
+        178,
+        235,
+        69,
+        251,
+        181
+      ]
+    },
+    {
+      "name": "PolicyUpdated",
+      "discriminator": [
+        225,
+        112,
+        112,
+        67,
+        95,
+        236,
+        245,
+        161
+      ]
+    },
+    {
+      "name": "PortfolioCommitmentUpdated",
+      "discriminator": [
+        113,
+        72,
+        195,
+        197,
+        124,
+        0,
+        134,
+        88
+      ]
+    },
+    {
+      "name": "VaultInitialized",
+      "discriminator": [
+        180,
+        43,
+        207,
+        2,
+        18,
+        71,
+        3,
+        75
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "EmptyPolicyAssets",
+      "msg": "policy must include at least one asset"
+    },
+    {
+      "code": 6001,
+      "name": "ZeroAmount",
+      "msg": "amount must be greater than zero"
+    },
+    {
+      "code": 6002,
+      "name": "MintNotInPolicy",
+      "msg": "mint is not part of the risk policy"
+    },
+    {
+      "code": 6003,
+      "name": "ZeroCommitment",
+      "msg": "commitment hash must be non-zero"
+    },
+    {
+      "code": 6004,
+      "name": "VaultNotLocked",
+      "msg": "vault has no locked collateral"
+    }
+  ],
+  "types": [
+    {
+      "name": "CollateralDeposited",
+      "docs": [
+        "Deliberately carries no amount/mint: the raw token ledger already exposes",
+        "transfers; our event surface adds nothing portfolio-specific."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CollateralWithdrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConcentrationParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "threshold_bps",
+            "docs": [
+              "A single asset above this weight of gross NAV is penalized (4000 = 40%)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "penalty_bps",
+            "docs": [
+              "Multiplier applied to the penalized asset's eligible value (7500 = 0.75)."
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PolicyAsset",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "advance_rate_bps",
+            "docs": [
+              "e.g. SPYx 8000 (80%), AAPLx 7000, NVDAx 6000 in the initial policy."
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PolicyInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "policy_id",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PolicyParams",
+      "docs": [
+        "Prototype risk parameters. These are DEMO ASSUMPTIONS, not production risk",
+        "parameters. Kept in one account so they are configurable, not hard-coded."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "session",
+            "type": {
+              "defined": {
+                "name": "SessionFactor"
+              }
+            }
+          },
+          {
+            "name": "concentration",
+            "type": {
+              "defined": {
+                "name": "ConcentrationParams"
+              }
+            }
+          },
+          {
+            "name": "credit_hf_bps",
+            "docs": [
+              "Health-factor floor for releasing NEW credit and for staying COMPLIANT",
+              "(20000 = 2.0x). Between this and `ineligible_hf_bps` the public",
+              "status is MARGIN_CALL."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "ineligible_hf_bps",
+            "docs": [
+              "Below this health factor the status is INELIGIBLE."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "max_staleness_slots",
+            "docs": [
+              "Feed freshness window, in slots, taken from the oracle accounts."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PolicyUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "policy",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PortfolioCommitmentUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RiskPolicy",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "policy_id",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "params",
+            "type": {
+              "defined": {
+                "name": "PolicyParams"
+              }
+            }
+          },
+          {
+            "name": "assets",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "PolicyAsset"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SessionFactor",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market_open_bps",
+            "docs": [
+              "Factor applied while the US equity market is open (e.g. 10000 = 1.00)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "extended_hours_bps",
+            "docs": [
+              "Extended/after-hours trading."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "market_closed_bps",
+            "docs": [
+              "Underlying market closed (overnight, weekend)."
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Vault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "institution",
+            "type": "pubkey"
+          },
+          {
+            "name": "policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "collateral_locked",
+            "type": "bool"
+          },
+          {
+            "name": "commitment",
+            "docs": [
+              "sha256 over the client-encrypted portfolio snapshot (32 zero bytes =",
+              "no snapshot committed yet). This is the ONLY portfolio-derived data on",
+              "chain: a commitment, not a disclosure."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "commitment_nonce",
+            "docs": [
+              "Program-counted snapshot version. Attestations must carry the current",
+              "value, which both binds them to this portfolio state and makes them",
+              "strictly non-replayable."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_commit_slot",
+            "type": "u64"
+          },
+          {
+            "name": "deposit_count",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "institution",
+            "type": "pubkey"
+          }
+        ]
+      }
+    }
+  ]
+}

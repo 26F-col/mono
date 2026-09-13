@@ -1,0 +1,15 @@
+[features]
+seeds = false
+skip-lint = false
+
+[programs.localnet]
+mock_oracle = "2fYvWaHejSYB1RNzsjrpQBMkmSNTXbYV9FWkRYXSj6Do"
+confidential_vault = "F5vxqZkc4tL4RxMjapgA4LM1qL3mskKur4RY6pjeyy4L"
+credit_gate = "6uLcY78dvjTYhwLzZUmridf5zUiEmmDHpLhidHezao3S"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn ts-mocha -p ./tsconfig.json -t 1000000 tests/*.ts"

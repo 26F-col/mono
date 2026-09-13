@@ -1,0 +1,31 @@
+{
+  "name": "confidential-margin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Confidential portfolio margin layer for tokenized stocks on Solana (hackathon prototype)",
+  "scripts": {
+    "build": "anchor build",
+    "test": "anchor test",
+    "demo": "tsx scripts/demo.ts",
+    "validator": "solana-test-validator --reset",
+    "start-demo": "bash scripts/start-demo.sh",
+    "sync-idl": "bash scripts/sync-idl.sh",
+    "privacy-audit": "tsx scripts/privacy-audit.ts localnet && tsx scripts/privacy-audit.ts devnet"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.31.1",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.95.8",
+    "tweetnacl": "^1.0.3"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.3.20",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.10.0",
+    "chai": "^4.5.0",
+    "mocha": "^10.8.2",
+    "ts-mocha": "^10.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

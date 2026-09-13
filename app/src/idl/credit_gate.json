@@ -1,0 +1,1687 @@
+{
+  "address": "6uLcY78dvjTYhwLzZUmridf5zUiEmmDHpLhidHezao3S",
+  "metadata": {
+    "name": "credit_gate",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Minimal demo credit consumer that verifies margin attestations and releases test USDC"
+  },
+  "instructions": [
+    {
+      "name": "fund_treasury",
+      "docs": [
+        "Seed the demo treasury. This stands in for lender liquidity and is NOT",
+        "a lending market: no yield, no shares, no accounting beyond a balance."
+      ],
+      "discriminator": [
+        71,
+        154,
+        45,
+        220,
+        206,
+        32,
+        174,
+        239
+      ],
+      "accounts": [
+        {
+          "name": "funder",
+          "signer": true
+        },
+        {
+          "name": "gate",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "funder_usdc",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "funder"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "usdc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "gate"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "usdc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_gate",
+      "docs": [
+        "Spin up the demo gate: pin the risk-engine attester and the test-USDC",
+        "mint, and create the treasury that funds released credit."
+      ],
+      "discriminator": [
+        41,
+        213,
+        207,
+        127,
+        15,
+        238,
+        192,
+        17
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "gate",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "gate"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "usdc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "attester",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "repay",
+      "docs": [
+        "Repay test-USDC into the treasury. Prototype repayment: no interest,",
+        "no penalties — just outstanding accounting so the demo can close out."
+      ],
+      "discriminator": [
+        234,
+        103,
+        67,
+        82,
+        208,
+        234,
+        219,
+        166
+      ],
+      "accounts": [
+        {
+          "name": "institution",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "gate",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "institution"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                209,
+                70,
+                244,
+                190,
+                244,
+                44,
+                114,
+                195,
+                129,
+                98,
+                161,
+                104,
+                228,
+                203,
+                195,
+                174,
+                146,
+                166,
+                189,
+                82,
+                185,
+                4,
+                55,
+                7,
+                42,
+                75,
+                88,
+                7,
+                255,
+                170,
+                134,
+                49
+              ]
+            }
+          }
+        },
+        {
+          "name": "facility",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  97,
+                  99,
+                  105,
+                  108,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gate"
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "institution_usdc",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "institution"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "usdc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "gate"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "usdc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "report_margin_status",
+      "docs": [
+        "Publish a margin-status change (MARGIN_CALL / INELIGIBLE / back to",
+        "COMPLIANT). Permissionless: the attestation itself is the authority.",
+        "The public learns only the status, never the cause in portfolio terms."
+      ],
+      "discriminator": [
+        118,
+        67,
+        23,
+        191,
+        79,
+        36,
+        119,
+        18
+      ],
+      "accounts": [
+        {
+          "name": "submitter",
+          "docs": [
+            "Anyone may submit; the attestation signature is the authority."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "gate",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault.institution",
+                "account": "Vault"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                209,
+                70,
+                244,
+                190,
+                244,
+                44,
+                114,
+                195,
+                129,
+                98,
+                161,
+                104,
+                228,
+                203,
+                195,
+                174,
+                146,
+                166,
+                189,
+                82,
+                185,
+                4,
+                55,
+                7,
+                42,
+                75,
+                88,
+                7,
+                255,
+                170,
+                134,
+                49
+              ]
+            }
+          }
+        },
+        {
+          "name": "policy"
+        },
+        {
+          "name": "facility",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  97,
+                  99,
+                  105,
+                  108,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gate"
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "instruction_sysvar"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "attestation",
+          "type": {
+            "defined": {
+              "name": "AttestationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "request_credit",
+      "docs": [
+        "The core consumer flow: verify a margin attestation and, if it states",
+        "ELIGIBLE for this vault's current commitment, release credit."
+      ],
+      "discriminator": [
+        243,
+        54,
+        157,
+        22,
+        103,
+        23,
+        58,
+        161
+      ],
+      "accounts": [
+        {
+          "name": "institution",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "gate",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "institution"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                209,
+                70,
+                244,
+                190,
+                244,
+                44,
+                114,
+                195,
+                129,
+                98,
+                161,
+                104,
+                228,
+                203,
+                195,
+                174,
+                146,
+                166,
+                189,
+                82,
+                185,
+                4,
+                55,
+                7,
+                42,
+                75,
+                88,
+                7,
+                255,
+                170,
+                134,
+                49
+              ]
+            }
+          }
+        },
+        {
+          "name": "policy"
+        },
+        {
+          "name": "facility",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  97,
+                  99,
+                  105,
+                  108,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gate"
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "institution_usdc",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "institution"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "usdc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "gate"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "usdc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "instruction_sysvar",
+          "docs": [
+            "Instructions sysvar: lets us read back the Ed25519 pre-instruction."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "attestation",
+          "type": {
+            "defined": {
+              "name": "AttestationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_attester",
+      "docs": [
+        "Gate authority may rotate the attester (prototype-only capability)."
+      ],
+      "discriminator": [
+        56,
+        199,
+        234,
+        175,
+        198,
+        241,
+        83,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "gate"
+          ]
+        },
+        {
+          "name": "gate",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "attester",
+          "type": "pubkey"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "CreditFacility",
+      "discriminator": [
+        192,
+        187,
+        81,
+        192,
+        233,
+        124,
+        22,
+        17
+      ]
+    },
+    {
+      "name": "CreditGate",
+      "discriminator": [
+        104,
+        124,
+        6,
+        124,
+        50,
+        97,
+        86,
+        250
+      ]
+    },
+    {
+      "name": "RiskPolicy",
+      "discriminator": [
+        36,
+        66,
+        86,
+        72,
+        195,
+        245,
+        148,
+        55
+      ]
+    },
+    {
+      "name": "Vault",
+      "discriminator": [
+        211,
+        8,
+        232,
+        43,
+        2,
+        152,
+        117,
+        119
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AttesterRotated",
+      "discriminator": [
+        160,
+        188,
+        235,
+        5,
+        158,
+        44,
+        43,
+        85
+      ]
+    },
+    {
+      "name": "CreditReleased",
+      "discriminator": [
+        16,
+        64,
+        83,
+        77,
+        47,
+        87,
+        111,
+        61
+      ]
+    },
+    {
+      "name": "GateInitialized",
+      "discriminator": [
+        222,
+        155,
+        98,
+        97,
+        174,
+        144,
+        39,
+        113
+      ]
+    },
+    {
+      "name": "LoanRepaid",
+      "discriminator": [
+        202,
+        183,
+        88,
+        60,
+        211,
+        54,
+        142,
+        243
+      ]
+    },
+    {
+      "name": "MarginStatusChanged",
+      "discriminator": [
+        117,
+        54,
+        236,
+        175,
+        201,
+        89,
+        51,
+        23
+      ]
+    },
+    {
+      "name": "TreasuryFunded",
+      "discriminator": [
+        172,
+        66,
+        241,
+        101,
+        216,
+        219,
+        147,
+        130
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "MissingEd25519Instruction",
+      "msg": "no valid Ed25519 attestation instruction found immediately before this instruction"
+    },
+    {
+      "code": 6001,
+      "name": "MalformedEd25519Instruction",
+      "msg": "malformed Ed25519 instruction data"
+    },
+    {
+      "code": 6002,
+      "name": "UnsupportedEd25519Layout",
+      "msg": "unsupported Ed25519 instruction layout (multi-signature or external data)"
+    },
+    {
+      "code": 6003,
+      "name": "WrongAttester",
+      "msg": "attestation was not signed by the pinned risk-engine attester"
+    },
+    {
+      "code": 6004,
+      "name": "AttestationMessageMismatch",
+      "msg": "signed message does not match the submitted attestation"
+    },
+    {
+      "code": 6005,
+      "name": "NotEligibleForCredit",
+      "msg": "decision does not permit credit release"
+    },
+    {
+      "code": 6006,
+      "name": "VaultNotLocked",
+      "msg": "vault has no locked collateral"
+    },
+    {
+      "code": 6007,
+      "name": "CommitmentMismatch",
+      "msg": "attestation commitment does not match the vault's current commitment"
+    },
+    {
+      "code": 6008,
+      "name": "PolicyMismatch",
+      "msg": "attestation policy does not match the vault policy"
+    },
+    {
+      "code": 6009,
+      "name": "StaleAttestation",
+      "msg": "attestation has expired"
+    },
+    {
+      "code": 6010,
+      "name": "NonceMismatch",
+      "msg": "attestation nonce does not match the vault's portfolio-state version"
+    },
+    {
+      "code": 6011,
+      "name": "NonceNotIncreasing",
+      "msg": "attestation nonce is not newer than the last consumed nonce"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidDecision",
+      "msg": "invalid decision value"
+    },
+    {
+      "code": 6013,
+      "name": "ZeroAmount",
+      "msg": "amount must be greater than zero"
+    },
+    {
+      "code": 6014,
+      "name": "RepayExceedsOutstanding",
+      "msg": "repay amount exceeds outstanding credit"
+    }
+  ],
+  "types": [
+    {
+      "name": "AttestationData",
+      "docs": [
+        "The margin decision. Contains NO private portfolio data by construction:",
+        "everything here is already public by design (amount, policy, decision)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "commitment",
+            "docs": [
+              "sha256 commitment; must equal the vault's current commitment."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "policy_id",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "requested_amount_usdc",
+            "docs": [
+              "Test-USDC micro-units (6 decimals)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "decision",
+            "docs": [
+              "DECISION_ELIGIBLE / DECISION_INELIGIBLE / DECISION_MARGIN_CALL."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "valid_until",
+            "docs": [
+              "Unix seconds after which the attestation is void."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "nonce",
+            "docs": [
+              "Must equal the vault's current commitment_nonce (freshness + replay)."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AttesterRotated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "attester",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConcentrationParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "threshold_bps",
+            "docs": [
+              "A single asset above this weight of gross NAV is penalized (4000 = 40%)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "penalty_bps",
+            "docs": [
+              "Multiplier applied to the penalized asset's eligible value (7500 = 0.75)."
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreditFacility",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "gate",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "institution",
+            "type": "pubkey"
+          },
+          {
+            "name": "outstanding_usdc",
+            "type": "u64"
+          },
+          {
+            "name": "margin_status",
+            "type": "u8"
+          },
+          {
+            "name": "last_credit_nonce",
+            "docs": [
+              "Strictly increasing: each credit draw must use a newer portfolio version."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_status_nonce",
+            "docs": [
+              "Status reports may repeat the current version (>=) — e.g. repeated",
+              "MARGIN_CALL monitoring between commits."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "opened_slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreditGate",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "attester",
+            "docs": [
+              "Ed25519 public key of the trusted risk engine (prototype trust root)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "usdc_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "total_released_usdc",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreditReleased",
+      "docs": [
+        "Public: amount + vault only. Portfolio stays confidential."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "institution",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount_usdc",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GateInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "gate",
+            "type": "pubkey"
+          },
+          {
+            "name": "attester",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LoanRepaid",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "remaining_usdc",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarginStatusChanged",
+      "docs": [
+        "Public: \"additional collateral required\" style signal, no cause detail."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PolicyAsset",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "advance_rate_bps",
+            "docs": [
+              "e.g. SPYx 8000 (80%), AAPLx 7000, NVDAx 6000 in the initial policy."
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PolicyParams",
+      "docs": [
+        "Prototype risk parameters. These are DEMO ASSUMPTIONS, not production risk",
+        "parameters. Kept in one account so they are configurable, not hard-coded."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "session",
+            "type": {
+              "defined": {
+                "name": "SessionFactor"
+              }
+            }
+          },
+          {
+            "name": "concentration",
+            "type": {
+              "defined": {
+                "name": "ConcentrationParams"
+              }
+            }
+          },
+          {
+            "name": "credit_hf_bps",
+            "docs": [
+              "Health-factor floor for releasing NEW credit and for staying COMPLIANT",
+              "(20000 = 2.0x). Between this and `ineligible_hf_bps` the public",
+              "status is MARGIN_CALL."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "ineligible_hf_bps",
+            "docs": [
+              "Below this health factor the status is INELIGIBLE."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "max_staleness_slots",
+            "docs": [
+              "Feed freshness window, in slots, taken from the oracle accounts."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RiskPolicy",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "policy_id",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "params",
+            "type": {
+              "defined": {
+                "name": "PolicyParams"
+              }
+            }
+          },
+          {
+            "name": "assets",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "PolicyAsset"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SessionFactor",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market_open_bps",
+            "docs": [
+              "Factor applied while the US equity market is open (e.g. 10000 = 1.00)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "extended_hours_bps",
+            "docs": [
+              "Extended/after-hours trading."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "market_closed_bps",
+            "docs": [
+              "Underlying market closed (overnight, weekend)."
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TreasuryFunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Vault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "institution",
+            "type": "pubkey"
+          },
+          {
+            "name": "policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "collateral_locked",
+            "type": "bool"
+          },
+          {
+            "name": "commitment",
+            "docs": [
+              "sha256 over the client-encrypted portfolio snapshot (32 zero bytes =",
+              "no snapshot committed yet). This is the ONLY portfolio-derived data on",
+              "chain: a commitment, not a disclosure."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "commitment_nonce",
+            "docs": [
+              "Program-counted snapshot version. Attestations must carry the current",
+              "value, which both binds them to this portfolio state and makes them",
+              "strictly non-replayable."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_commit_slot",
+            "type": "u64"
+          },
+          {
+            "name": "deposit_count",
+            "type": "u16"
+          }
+        ]
+      }
+    }
+  ]
+}

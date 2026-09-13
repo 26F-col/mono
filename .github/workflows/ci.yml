@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Solana CLI (agave) + Anchor via AVM
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      - name: Install Anchor
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked
+          avm install 0.31.1
+          avm use 0.31.1
+
+      - name: Install JS dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build programs
+        run: anchor build
+
+      - name: Run test suite (starts a local validator)
+        run: anchor test --skip-build

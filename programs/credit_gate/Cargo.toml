@@ -1,0 +1,28 @@
+[package]
+name = "credit-gate"
+version = "0.1.0"
+description = "Minimal demo credit consumer that verifies margin attestations and releases test USDC"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "credit_gate"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build", "confidential-vault/idl-build"]
+
+[dependencies]
+anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
+anchor-spl = { version = "0.31.1", default-features = false, features = ["associated_token", "token", "token_2022"] }
+confidential-vault = { path = "../confidential_vault", features = ["cpi", "no-entrypoint"] }
+
+# Toolchain-compat pins (agave platform-tools rustc 1.84): newer wasm-bindgen
+# drags syn 3 + proc-macro2 1.0.91+, which break host proc-macro builds here.
+# Inert on SBF targets. See docs/DEPENDENCIES.md.
+js-sys = "=0.3.76"
+wasm-bindgen = "=0.2.99"
