@@ -214,6 +214,35 @@ pub mod confidential_vault {
         Ok(())
     }
 
+    /// Institution grants an auditor view access (public registry entry).
+    /// The per-auditor data envelope itself is sealed off-chain (SDK).
+    pub fn grant_auditor(
+        ctx: Context<GrantAuditor>,
+        label: [u8; 16],
+    ) -> Result<()> {
+        let perm = &mut ctx.accounts.permission;
+        perm.vault = ctx.accounts.vault.key();
+        perm.auditor = ctx.accounts.auditor.key();
+        perm.granted_at = Clock::get()?.unix_timestamp;
+        perm.label = label;
+        perm.bump = ctx.bumps.permission;
+        emit!(AuditorGranted {
+            vault: ctx.accounts.vault.key(),
+            auditor: ctx.accounts.auditor.key(),
+        });
+        Ok(())
+    }
+
+    /// Institution revokes an auditor. The sealed envelope must be discarded
+    /// off-chain; the on-chain registry entry is closed.
+    pub fn revoke_auditor(ctx: Context<RevokeAuditor>) -> Result<()> {
+        emit!(AuditorRevoked {
+            vault: ctx.accounts.vault.key(),
+            auditor: ctx.accounts.auditor.key(),
+        });
+        Ok(())
+    }
+
     /// CREDIT LAYER ONLY (gate PDA signs via CPI): freeze or unfreeze
     /// institution withdrawals. Locked while credit is outstanding.
     pub fn set_withdrawal_gate(ctx: Context<VaultCreditAuth>, locked: bool) -> Result<()> {
@@ -310,6 +339,20 @@ pub struct RiskPolicy {
     pub params: PolicyParams,
     #[max_len(8)]
     pub assets: Vec<PolicyAsset>,
+}
+
+/// Registry of authorized auditors per vault. The institution (controller)
+/// grants view access; the SDK seals a per-auditor envelope and records the
+/// grant here so authorization is publicly verifiable on chain.
+#[account]
+#[derive(InitSpace)]
+pub struct AuditorPermission {
+    pub vault: Pubkey,
+    pub auditor: Pubkey,
+    pub granted_at: i64,
+    #[max_len(16)]
+    pub label: [u8; 16],
+    pub bump: u8,
 }
 
 #[account]
@@ -414,6 +457,53 @@ pub struct VaultRecoveryAuth<'info> {
         constraint = vault.recovery_authority == recovery_authority.key()
     )]
     pub vault: Account<'info, Vault>,
+}
+
+#[derive(Accounts)]
+pub struct GrantAuditor<'info> {
+    #[account(
+        seeds = [b"vault", vault.institution.as_ref(), b"v2"],
+        bump,
+        constraint = vault.controller == controller.key()
+    )]
+    pub vault: Account<'info, Vault>,
+    #[account(mut)]
+    pub controller: Signer<'info>,
+    /// CHECK: the authorized auditor (registry entry only).
+    pub auditor: UncheckedAccount<'info>,
+    #[account(
+        init,
+        payer = controller,
+        space = 8 + AuditorPermission::INIT_SPACE,
+        seeds = [b"auditor", vault.key().as_ref(), auditor.key.as_ref()],
+        bump
+    )]
+    pub permission: Account<'info, AuditorPermission>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct RevokeAuditor<'info> {
+    #[account(
+        seeds = [b"vault", vault.institution.as_ref(), b"v2"],
+        bump,
+        constraint = vault.controller == controller.key()
+    )]
+    pub vault: Account<'info, Vault>,
+    #[account(mut)]
+    pub controller: Signer<'info>,
+    /// CHECK: the auditor whose permission is being revoked.
+    pub auditor: UncheckedAccount<'info>,
+    #[account(
+        mut,
+        close = controller,
+        seeds = [b"auditor", vault.key().as_ref(), auditor.key.as_ref()],
+        bump,
+        has_one = vault,
+        has_one = auditor
+    )]
+    pub permission: Account<'info, AuditorPermission>,
+    pub system_program: Program<'info, System>,
 }
 
 /// Credit layer (gate PDA) authenticates by signing the CPI.
@@ -571,6 +661,18 @@ pub struct ControllerRecovered {
 pub struct RecoveryAuthoritySet {
     pub vault: Pubkey,
     pub recovery_authority: Pubkey,
+}
+
+#[event]
+pub struct AuditorGranted {
+    pub vault: Pubkey,
+    pub auditor: Pubkey,
+}
+
+#[event]
+pub struct AuditorRevoked {
+    pub vault: Pubkey,
+    pub auditor: Pubkey,
 }
 
 #[event]

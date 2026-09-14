@@ -775,6 +775,8 @@ export class ConfidentialMarginClient {
     holdings: Holding[];
     seizeSymbol: string;
     seizeAmount: number;
+    /** USDC debt offset this seizure represents (attester-valued). */
+    debtOffsetUsdc: number;
     /** ATA (or any token account) receiving the seized collateral. */
     receiver: PublicKey;
   }): Promise<{ decision: number; txSig: string }> {
@@ -790,7 +792,7 @@ export class ConfidentialMarginClient {
     const { signed, vault } = await this.buildAttestationFor({
       institution: args.institution,
       attester: args.attesters[0],
-      requestedUsdcMicros: 0,
+      requestedUsdcMicros: args.debtOffsetUsdc,
       decision: 3, // DECISION_LIQUIDATE
       policyAuthority: args.policyAuthority,
       seizeMint,

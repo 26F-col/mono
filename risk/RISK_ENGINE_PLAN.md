@@ -54,6 +54,10 @@ Today the "committee" is a stand-in inside the same demo process. The plan:
 
 ## Phase 3 — trust minimization (MPC / ZK)
 
+**STATUS: Phase 3 STARTED** — `sdk/src/zk.ts` implements the Poseidon
+commitment + Fiat-Shamir threshold proof (6/6 tests passing). The full
+Groth16 circuit is the next build phase.
+
 1. **Arcium MXE (preferred)**: institutions submit *encrypted* holdings; the
    margin computation (the same haircut math) runs inside MPC; output is a
    signed decision no single party could fake or inspect.

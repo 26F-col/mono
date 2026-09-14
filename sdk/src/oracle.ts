@@ -15,8 +15,9 @@ export interface PriceOracle {
 }
 
 export function feedPda(symbol: string): PublicKey {
+  // v2 seeds: matches the mock_oracle program's versioned feed PDAs.
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("price"), symbolBytes(symbol)],
+    [Buffer.from("price"), symbolBytes(symbol), Buffer.from("v2")],
     PROGRAM_IDS.mockOracle,
   )[0];
 }

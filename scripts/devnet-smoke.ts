@@ -319,11 +319,11 @@ async function main() {
   if (deep.risk.decision !== "INELIGIBLE") throw new Error(`expected INELIGIBLE, got ${deep.risk.decision}`);
   console.log("    ✔ public margin status: INELIGIBLE — liquidation armed");
 
-  console.log("[4c] liquidation: committee authorizes seizure of NVDA custody…");
+  console.log("[4c] liquidation leg 1: seize NVDA → $150k debt offset…");
   const nvdaMint = mints.bySymbol.get("NVDAx")!.mint;
   const lenderNvdaAta = getAssociatedTokenAddressSync(nvdaMint, lender.publicKey, false, TOKEN_2022_PROGRAM_ID);
   await robust("create lender NVDA ATA", () => client.ensureAta(payer, lender.publicKey, nvdaMint));
-  await robust("execute liquidation", () =>
+  await robust("execute liquidation leg 1", () =>
     client.executeLiquidation({
       submitter: lender,
       attesters,
@@ -332,16 +332,40 @@ async function main() {
       holdings: DEMO_PORTFOLIO,
       seizeSymbol: "NVDAx",
       seizeAmount: 200_000,
+      debtOffsetUsdc: 150_000_000_000,
       receiver: lenderNvdaAta,
     }),
   );
-  const seized = await robust("read seized custody", () =>
+  const afterLeg1 = await robust("read facility after leg 1", () =>
+    client.getFacility(institution.publicKey),
+  );
+  if (afterLeg1.outstandingUsdc !== 150_000_000_000) throw new Error("leg 1 debt offset failed");
+  console.log("    ✔ leg 1: NVDA seized, outstanding $150k, still INELIGIBLE + locked");
+
+  console.log("[4d] liquidation leg 2: seize SPYx → extinguish remainder…");
+  const spyMint = mints.bySymbol.get("SPYx")!.mint;
+  const lenderSpyAta = getAssociatedTokenAddressSync(spyMint, lender.publicKey, false, TOKEN_2022_PROGRAM_ID);
+  await robust("create lender SPY ATA", () => client.ensureAta(payer, lender.publicKey, spyMint));
+  await robust("execute liquidation leg 2", () =>
+    client.executeLiquidation({
+      submitter: lender,
+      attesters,
+      policyAuthority: policyAuth.publicKey,
+      institution: institution.publicKey,
+      holdings: DEMO_PORTFOLIO,
+      seizeSymbol: "SPYx",
+      seizeAmount: 100_000,
+      debtOffsetUsdc: 150_000_000_000,
+      receiver: lenderSpyAta,
+    }),
+  );
+  const spyCustodyBal = await robust("read seized SPY custody", () =>
     conn.getTokenAccountBalance(
-      ConfidentialMarginClient.custodyPda(ConfidentialMarginClient.vaultPda(institution.publicKey), nvdaMint),
+      ConfidentialMarginClient.custodyPda(ConfidentialMarginClient.vaultPda(institution.publicKey), spyMint),
     ),
   );
-  if (Number(seized.value.amount) !== 0) throw new Error("seizure did not empty NVDA custody");
-  console.log("    ✔ 2,000 NVDAx seized → lender (facility LIQUIDATED, debt extinguished)");
+  if (Number(spyCustodyBal.value.amount) !== 0) throw new Error("seizure did not empty SPY custody");
+  console.log("    ✔ leg 2: SPYx seized → lender (facility LIQUIDATED, debt extinguished)");
 
   console.log("[5] recovery: prices restored → repay remainder…");
   await robust("restore SPY price", () => client.oracle.setPrice("SPYx", 500_00));

@@ -156,6 +156,19 @@ exists in the SDK: the institution holds the AES key + ciphertext, and the
 ciphertext hash is the on-chain commitment — disclosing the key+blob lets an
 auditor verify the commitment matches the chain.
 
+## ZK milestone (Phase 3 started)
+
+- **Poseidon commitment** — the portfolio is committed via a ZK-friendly
+  Poseidon hash over BN254 (not sha256), with a per-run salt preventing
+  brute-force enumeration of the holdings.
+- **Threshold proof** — a Fiat-Shamir Sigma protocol proves that the computed
+  HF meets the policy threshold, bound to the commitment via the challenge.
+  Tests: `npx ts-mocha tests/zk-milestone.ts`.
+- **Poseidon on-chain** — the vault's `commit_portfolio` currently accepts
+  the sha256 of the Poseidon commitment (32B). The full Groth16 circuit
+  (proving the haircut computation inside the proof) is the next build
+  phase — see `risk/ZK_MILESTONE.md`.
+
 ## v2 hardening (all on-chain, all tested)
 
 - **Attester quorum** — every margin decision needs K-of-3 risk-engine

@@ -483,23 +483,33 @@ pub mod credit_gate {
         )?;
 
         facility.last_status_nonce = attestation.nonce;
-        facility.outstanding_usdc = 0;
-        facility.margin_status = STATUS_LIQUIDATED;
+        // The attestation's requested_amount_usdc carries the USDC debt offset
+        // for this seizure (the risk engine values the seized asset). Multiple
+        // seizures across different custody assets are supported: each seizes
+        // one asset and offsets part of the debt until outstanding reaches 0.
+        let debt_offset = attestation.requested_amount_usdc;
+        facility.outstanding_usdc = facility.outstanding_usdc.saturating_sub(debt_offset);
         facility.last_nonce_liquidated = attestation.nonce;
 
-        // Debt extinguished by seizure: unfreeze vault withdrawals.
-        let gate_seeds: &[&[u8]] = &[b"gate", GATE_V2_SEED, &[gate.bump]];
-        confidential_vault::cpi::set_withdrawal_gate(
-            CpiContext::new_with_signer(
-                ctx.accounts.vault_program.to_account_info(),
-                confidential_vault::cpi::accounts::VaultCreditAuth {
-                    gate_authority: ctx.accounts.gate.to_account_info(),
-                    vault: vault.to_account_info(),
-                },
-                &[gate_seeds],
-            ),
-            false,
-        )?;
+        // Debt fully covered: mark liquidated and unfreeze withdrawals.
+        // Otherwise the facility stays INELIGIBLE for further seizures.
+        if facility.outstanding_usdc == 0 {
+            facility.margin_status = STATUS_LIQUIDATED;
+            let gate_seeds: &[&[u8]] = &[b"gate", GATE_V2_SEED, &[gate.bump]];
+            confidential_vault::cpi::set_withdrawal_gate(
+                CpiContext::new_with_signer(
+                    ctx.accounts.vault_program.to_account_info(),
+                    confidential_vault::cpi::accounts::VaultCreditAuth {
+                        gate_authority: ctx.accounts.gate.to_account_info(),
+                        vault: vault.to_account_info(),
+                    },
+                    &[gate_seeds],
+                ),
+                false,
+            )?;
+        } else {
+            facility.margin_status = STATUS_INELIGIBLE;
+        }
 
         emit!(AttestationLogged {
             vault: vault.key(),
@@ -512,6 +522,8 @@ pub mod credit_gate {
             vault: vault.key(),
             mint: ctx.accounts.seize_mint.key(),
             units_seized: amount,
+            debt_offset_usdc: debt_offset,
+            outstanding_after_usdc: facility.outstanding_usdc,
         });
         Ok(())
     }
@@ -888,6 +900,8 @@ pub struct LiquidationExecuted {
     pub vault: Pubkey,
     pub mint: Pubkey,
     pub units_seized: u64,
+    pub debt_offset_usdc: u64,
+    pub outstanding_after_usdc: u64,
 }
 
 #[event]

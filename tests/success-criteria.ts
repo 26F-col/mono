@@ -172,6 +172,13 @@ describe("Confidential Portfolio Margin Layer — brief §22 success criteria (v
   });
 
   it("negative: withdrawal is blocked while credit is outstanding", async () => {
+    const spyCustody = await conn.getTokenAccountBalance(
+      ConfidentialMarginClient.custodyPda(
+        ConfidentialMarginClient.vaultPda(institution.publicKey),
+        mints.bySymbol.get("SPYx")!.mint,
+      ),
+    );
+    console.log("    [dbg] SPYx custody:", spyCustody.value.amount);
     try {
       await client.withdrawCollateral(institution, "SPYx", 100);
       expect.fail("should have failed");
@@ -309,7 +316,7 @@ describe("Confidential Portfolio Margin Layer — brief §22 success criteria (v
     expect((await client.getFacility(institution.publicKey)).marginStatus).to.eq(STATUS.INELIGIBLE);
   });
 
-  it("v2 enforcement: liquidation seizes shocked collateral from custody to the lender", async () => {
+  it("v2 enforcement: liquidation leg 1 — NVDA seized, $150k debt offset, still INELIGIBLE", async () => {
     await client.ensureAta(payer, lender.publicKey, mints.bySymbol.get("NVDAx")!.mint);
 
     const res = await client.executeLiquidation({
@@ -320,6 +327,7 @@ describe("Confidential Portfolio Margin Layer — brief §22 success criteria (v
       holdings: DEMO_PORTFOLIO,
       seizeSymbol: "NVDAx",
       seizeAmount: 200_000, // full NVDA custody
+      debtOffsetUsdc: 150_000_000_000,
       receiver: getAssociatedTokenAddressSync(
         mints.bySymbol.get("NVDAx")!.mint,
         lender.publicKey,
@@ -329,9 +337,10 @@ describe("Confidential Portfolio Margin Layer — brief §22 success criteria (v
     });
     expect(res.decision).to.eq(3);
 
+    // Debt offset $150k of $300k: still INELIGIBLE + locked for further seizures.
     const facility = await client.getFacility(institution.publicKey);
-    expect(facility.marginStatus).to.eq(STATUS.LIQUIDATED);
-    expect(facility.outstandingUsdc).to.eq(0); // debt extinguished by seizure
+    expect(facility.outstandingUsdc).to.eq(150_000_000_000);
+    expect(facility.marginStatus).to.eq(STATUS.INELIGIBLE);
 
     const nvdaCustody = await conn.getTokenAccountBalance(
       ConfidentialMarginClient.custodyPda(
@@ -342,11 +351,40 @@ describe("Confidential Portfolio Margin Layer — brief §22 success criteria (v
     expect(Number(nvdaCustody.value.amount)).to.eq(0);
   });
 
+  it("v2 enforcement: liquidation leg 2 — SPYx seized, debt extinguished, unlocked", async () => {
+    const spyAta = getAssociatedTokenAddressSync(
+      mints.bySymbol.get("SPYx")!.mint, lender.publicKey, false, TOKEN_2022_PROGRAM_ID);
+    await client.ensureAta(payer, lender.publicKey, mints.bySymbol.get("SPYx")!.mint);
+    const before = await conn.getTokenAccountBalance(spyAta);
+
+    const res = await client.executeLiquidation({
+      submitter: lender,
+      attesters: quorum,
+      policyAuthority: policyAuth.publicKey,
+      institution: institution.publicKey,
+      holdings: DEMO_PORTFOLIO,
+      seizeSymbol: "SPYx",
+      seizeAmount: 100_000, // full SPYx custody
+      debtOffsetUsdc: 150_000_000_000,
+      receiver: spyAta,
+    });
+    expect(res.decision).to.eq(3);
+
+    const facility = await client.getFacility(institution.publicKey);
+    expect(facility.outstandingUsdc).to.eq(0);
+    expect(facility.marginStatus).to.eq(STATUS.LIQUIDATED);
+
+    const after = await conn.getTokenAccountBalance(spyAta);
+    expect(BigInt(after.value.amount) - BigInt(before.value.amount)).to.eq(
+      BigInt(100_000), // 1,000 SPYx seized to the lender
+    );
+  });
+
   it("v2 enforcement: withdrawals unlock after the facility is extinguished", async () => {
     const v = await client.getVault(institution.publicKey);
     expect(v.withdrawalLocked, "withdrawals unlocked after liquidation").to.be.false;
-    // A real withdrawal now succeeds (SPYx is untouched by the NVDA seizure).
-    await client.withdrawCollateral(institution, "SPYx", 100); // 1 share
+    // SPYx was seized in the liquidation legs — withdraw the remaining AAPLx.
+    await client.withdrawCollateral(institution, "AAPLx", 100);
   });
 
   it("recovery: recovery authority rotates the controller; old key loses access", async () => {
@@ -390,11 +428,12 @@ describe("Confidential Portfolio Margin Layer — brief §22 success criteria (v
     }
 
     // HONESTY CHECK — the documented ingress leak (see README).
-    // Post-liquidation state: NVDA was seized to the lender, the rest remains.
+    // Post-liquidation state: SPYx and NVDAx were seized to the lender,
+    // AAPLx remains in custody.
     const expectedCustody: Record<string, number> = {
-      SPYx: 99_900, // 100 units withdrawn post-liquidation
-      AAPLx: 150_000,
-      NVDAx: 0,
+      SPYx: 0, // seized in liquidation leg 2
+      AAPLx: 149_900, // 100 units withdrawn post-liquidation
+      NVDAx: 0, // seized in liquidation leg 1
     };
     for (const [sym, qty] of Object.entries(expectedCustody)) {
       const bal = await conn.getTokenAccountBalance(
@@ -436,11 +475,8 @@ describe("Confidential Portfolio Margin Layer — brief §22 success criteria (v
   });
 
   it("attester honesty guard: post-liquidation custody matches the remaining portfolio", async () => {
-    // After the NVDA seizure, the risk engine re-evaluates the REMAINING
-    // portfolio (SPYx + AAPLx only).
-    const remaining = DEMO_PORTFOLIO.filter((h) => h.symbol !== "NVDAx").map((h) =>
-      h.symbol === "SPYx" ? { ...h, qtyUnits: h.qtyUnits - 100 } : h,
-    );
+    // After both seizures, only AAPLx remains in custody (SPYx + NVDAx seized).
+    const remaining = [{ symbol: "AAPLx", qtyUnits: 149_900 }];
     const res = await client.attesterCrossCheck(remaining, institution.publicKey);
     expect(res.ok, JSON.stringify(res.details)).to.be.true;
   });

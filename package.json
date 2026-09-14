@@ -10,12 +10,15 @@
     "validator": "solana-test-validator --reset",
     "start-demo": "bash scripts/start-demo.sh",
     "sync-idl": "bash scripts/sync-idl.sh",
-    "privacy-audit": "tsx scripts/privacy-audit.ts localnet && tsx scripts/privacy-audit.ts devnet"
+    "privacy-audit": "tsx scripts/privacy-audit.ts localnet && tsx scripts/privacy-audit.ts devnet",
+    "test:zk": "ts-mocha -p ./tsconfig.json tests/zk-milestone.ts",
+    "gen-golden": "tsx scripts/gen-golden-vectors.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
     "@solana/spl-token": "^0.4.9",
     "@solana/web3.js": "^1.95.8",
+    "poseidon-lite": "^0.3.0",
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
