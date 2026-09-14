@@ -682,7 +682,7 @@ pub struct RequestCredit<'info> {
     pub gate: Box<Account<'info, CreditGate>>,
     #[account(
         mut,
-        seeds = [b"vault", vault.institution.as_ref()],
+        seeds = [b"vault", vault.institution.as_ref(), b"v2"],
         seeds::program = confidential_vault::ID,
         bump,
         constraint = vault.institution == institution.key()
@@ -734,7 +734,7 @@ pub struct ReportMarginStatus<'info> {
     pub submitter: Signer<'info>,
     #[account(seeds = [b"gate", GATE_V2_SEED], bump)]
     pub gate: Account<'info, CreditGate>,
-    #[account(seeds = [b"vault", vault.institution.as_ref()], seeds::program = confidential_vault::ID, bump)]
+    #[account(seeds = [b"vault", vault.institution.as_ref(), b"v2"], seeds::program = confidential_vault::ID, bump)]
     pub vault: Account<'info, Vault>,
     #[account(address = vault.policy)]
     pub policy: Account<'info, RiskPolicy>,
@@ -760,7 +760,7 @@ pub struct ExecuteLiquidation<'info> {
     pub submitter: Signer<'info>,
     #[account(seeds = [b"gate", GATE_V2_SEED], bump)]
     pub gate: Account<'info, CreditGate>,
-    #[account(mut, seeds = [b"vault", vault.institution.as_ref()], seeds::program = confidential_vault::ID, bump)]
+    #[account(mut, seeds = [b"vault", vault.institution.as_ref(), b"v2"], seeds::program = confidential_vault::ID, bump)]
     pub vault: Box<Account<'info, Vault>>,
     #[account(address = vault.policy)]
     pub policy: Box<Account<'info, RiskPolicy>>,
@@ -803,7 +803,7 @@ pub struct Repay<'info> {
     pub gate: Account<'info, CreditGate>,
     #[account(
         mut,
-        seeds = [b"vault", vault.institution.as_ref()],
+        seeds = [b"vault", vault.institution.as_ref(), b"v2"],
         seeds::program = confidential_vault::ID,
         bump,
         constraint = vault.institution == institution.key()

@@ -47,7 +47,10 @@ import { POLICY_ID as _POLICY_ID_UNUSED } from "../sdk/src/config";
 void _POLICY_ID_UNUSED;
 
 const CLUSTER = (process.argv[2] ?? "localnet") as "localnet" | "devnet";
-const RPC = CLUSTER === "devnet" ? "https://api.devnet.solana.com" : "http://127.0.0.1:8899";
+const RPC =
+  CLUSTER === "devnet"
+    ? process.env.DEVNET_RPC ?? "https://api.devnet.solana.com"
+    : "http://127.0.0.1:8899";
 const STATE_FILE =
   CLUSTER === "devnet" ? "app/public/devnet-state.json" : "app/public/demo-state.json";
 

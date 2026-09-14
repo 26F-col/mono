@@ -84,7 +84,7 @@ pub struct InitializeFeed<'info> {
         init,
         payer = authority,
         space = 8 + PriceFeed::INIT_SPACE,
-        seeds = [b"price", &symbol[..]],
+        seeds = [b"price", &symbol[..], b"v2"],
         bump
     )]
     pub feed: Account<'info, PriceFeed>,
@@ -94,7 +94,7 @@ pub struct InitializeFeed<'info> {
 #[derive(Accounts)]
 pub struct SetPrice<'info> {
     pub authority: Signer<'info>,
-    #[account(mut, seeds = [b"price", &feed.symbol[..]], bump, has_one = authority)]
+    #[account(mut, seeds = [b"price", &feed.symbol[..], b"v2"], bump, has_one = authority)]
     pub feed: Account<'info, PriceFeed>,
 }
 

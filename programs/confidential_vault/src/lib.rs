@@ -196,7 +196,7 @@ pub mod confidential_vault {
         );
 
         let institution_key = ctx.accounts.vault.institution;
-        let seeds: &[&[u8]] = &[b"vault", institution_key.as_ref(), &[ctx.accounts.vault.bump]];
+        let seeds: &[&[u8]] = &[b"vault", institution_key.as_ref(), b"v2", &[ctx.accounts.vault.bump]];
         let signer_seeds = &[seeds];
         let cpi_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
@@ -234,7 +234,7 @@ pub mod confidential_vault {
     pub fn liquidate_custody(ctx: Context<LiquidateCustody>, amount: u64) -> Result<()> {
         require!(amount > 0, VaultError::ZeroAmount);
         let institution_key = ctx.accounts.vault.institution;
-        let seeds: &[&[u8]] = &[b"vault", institution_key.as_ref(), &[ctx.accounts.vault.bump]];
+        let seeds: &[&[u8]] = &[b"vault", institution_key.as_ref(), b"v2", &[ctx.accounts.vault.bump]];
         let signer_seeds = &[seeds];
         let cpi_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
@@ -381,7 +381,7 @@ pub struct InitializeVault<'info> {
         init,
         payer = institution,
         space = 8 + Vault::INIT_SPACE,
-        seeds = [b"vault", institution.key().as_ref()],
+        seeds = [b"vault", institution.key().as_ref(), b"v2"],
         bump
     )]
     pub vault: Account<'info, Vault>,
@@ -397,7 +397,7 @@ pub struct VaultControllerAuth<'info> {
     pub controller: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"vault", vault.institution.as_ref()],
+        seeds = [b"vault", vault.institution.as_ref(), b"v2"],
         bump,
         constraint = vault.controller == controller.key()
     )]
@@ -409,7 +409,7 @@ pub struct VaultRecoveryAuth<'info> {
     pub recovery_authority: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"vault", vault.institution.as_ref()],
+        seeds = [b"vault", vault.institution.as_ref(), b"v2"],
         bump,
         constraint = vault.recovery_authority == recovery_authority.key()
     )]
@@ -422,7 +422,7 @@ pub struct VaultCreditAuth<'info> {
     pub gate_authority: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"vault", vault.institution.as_ref()],
+        seeds = [b"vault", vault.institution.as_ref(), b"v2"],
         bump,
         constraint = vault.liquidation_authority == gate_authority.key()
     )]
@@ -433,7 +433,7 @@ pub struct VaultCreditAuth<'info> {
 pub struct DepositCollateral<'info> {
     #[account(
         mut,
-        seeds = [b"vault", vault.institution.as_ref()],
+        seeds = [b"vault", vault.institution.as_ref(), b"v2"],
         bump,
         constraint = vault.controller == controller.key()
     )]
@@ -468,7 +468,7 @@ pub struct DepositCollateral<'info> {
 pub struct CommitPortfolio<'info> {
     #[account(
         mut,
-        seeds = [b"vault", vault.institution.as_ref()],
+        seeds = [b"vault", vault.institution.as_ref(), b"v2"],
         bump,
         constraint = vault.controller == controller.key()
     )]
@@ -480,7 +480,7 @@ pub struct CommitPortfolio<'info> {
 pub struct WithdrawCollateral<'info> {
     #[account(
         mut,
-        seeds = [b"vault", vault.institution.as_ref()],
+        seeds = [b"vault", vault.institution.as_ref(), b"v2"],
         bump,
         constraint = vault.controller == controller.key(),
         constraint = !vault.withdrawal_locked @ VaultError::WithdrawalLocked
@@ -513,7 +513,7 @@ pub struct LiquidateCustody<'info> {
     pub gate_authority: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"vault", vault.institution.as_ref()],
+        seeds = [b"vault", vault.institution.as_ref(), b"v2"],
         bump,
         constraint = vault.liquidation_authority == gate_authority.key()
     )]

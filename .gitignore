@@ -20,3 +20,5 @@ app/public/localnet-state.json
 # rust
 **/*.rs.bk
 app/public/devnet-state.json
+.env.local
+app/.env.local

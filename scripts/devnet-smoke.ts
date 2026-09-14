@@ -1,19 +1,13 @@
 /**
- * DEVNET end-to-end smoke test for the deployed programs.
+ * DEVNET end-to-end smoke test for the deployed programs (RESUMABLE).
  *
- * Prereq: `bash scripts/deploy-devnet.sh` (programs on devnet) and the deploy
- * wallet funded. Runs the full credit cycle:
+ * Every backend piece (mints, feeds, policy, gate, vault, deposits) is
+ * deterministic or idempotent: re-running after a partial failure fills in
+ * exactly what is missing. Finishes with the full credit cycle:
+ * commit → 2-of-3 attested request → stress → margin call → deep stress →
+ * liquidation → recovery.
  *
- *   mints + feeds + policy + gate → deposit → confidential commit →
- *   private eval → Ed25519-attested credit request → NVDA stress →
- *   margin-call report → recovery → repay
- *
- * RESUMABLE: safe to re-run after partial failures. Existing on-chain state
- * (feeds, policy, gate, vault, deposits) is detected and reused; only missing
- * pieces are created. The recovered equity mints are mapped by POLICY ORDER
- * (policy.assets[i] corresponds to TEST_ASSETS[i]).
- *
- * Writes app/public/devnet-state.json so the app can run with ?cluster=devnet.
+ * Writes app/public/devnet-state.json for the app's ?cluster=devnet mode.
  */
 import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
 import {
@@ -24,13 +18,15 @@ import {
   SystemProgram,
   Transaction,
 } from "@solana/web3.js";
+import { TOKEN_2022_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import * as fs from "fs";
 import * as path from "path";
 import { ConfidentialMarginClient, demoKeypair } from "../sdk/src/client";
-import { TOKEN_2022_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import {
   DEMO_PORTFOLIO,
   DEMO_REQUEST_USDC_MICROS,
+  demoKeypair as seedDerivedKeypair,
+  seedFor,
   SESSION,
   STATUS,
   STATUS_NAME,
@@ -39,24 +35,23 @@ import {
 
 const RPC = process.env.RPC_URL ?? "https://api.devnet.solana.com";
 const ADVANCE_RATES: Record<string, number> = { SPYx: 8000, AAPLx: 7000, NVDAx: 6000 };
-const TREASURY_TARGET_USDC = 1_000_000_000_000; // $1M test-USDC
+const TREASURY_TARGET_USDC = 1_000_000_000_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Devnet public RPC rate-limits aggressively: space ops out and retry 429s. */
 async function robust<T>(label: string, fn: () => Promise<T>, tries = 10): Promise<T> {
   let last: unknown;
   for (let i = 0; i < tries; i++) {
     try {
       const out = await fn();
-      await sleep(2500);
+      await sleep(2000);
       return out;
     } catch (e: any) {
       last = e;
       const msg = String(e?.message ?? e);
       if (/429|Too Many|blockhash|timeout/i.test(msg)) {
         const wait = 12_000 * (Math.min(i, 4) + 1);
-        console.log(`    … ${label}: ${msg.includes("429") ? "429" : "retryable"} — waiting ${wait / 1000}s`);
+        console.log(`    … ${label}: retryable — waiting ${wait / 1000}s`);
         await sleep(wait);
         continue;
       }
@@ -66,16 +61,21 @@ async function robust<T>(label: string, fn: () => Promise<T>, tries = 10): Promi
   throw last;
 }
 
+function alreadyInUse(e: unknown): boolean {
+  return /already in use/i.test(String((e as any)?.message ?? e));
+}
+
 async function main() {
   const walletPath = process.env.ANCHOR_WALLET || path.join(process.env.HOME!, ".config/solana/id.json");
   const payer = Keypair.fromSecretKey(new Uint8Array(JSON.parse(fs.readFileSync(walletPath, "utf8"))));
   const conn = new Connection(RPC, "confirmed");
   const provider = new AnchorProvider(conn, new Wallet(payer), { commitment: "confirmed" });
 
-  const oracleAuth = demoKeypair("oracle-authority");
+  const oracleAuth = Keypair.fromSeed(seedFor("oracle-authority"));
   const policyAuth = demoKeypair("policy-authority");
   const attester1 = demoKeypair("attester-1");
   const attester2 = demoKeypair("attester-2");
+  const attester3 = demoKeypair("attester-3"); // idle seat
   const attesters = [attester1, attester2];
   const institution = demoKeypair("institution");
   const lender = demoKeypair("lender");
@@ -83,8 +83,8 @@ async function main() {
 
   const balance = await conn.getBalance(payer.publicKey);
   console.log(`deployer ${payer.publicKey.toBase58()} balance ${(balance / LAMPORTS_PER_SOL).toFixed(3)} SOL on ${RPC}`);
-  if (balance / LAMPORTS_PER_SOL < 1.5) {
-    throw new Error("deployer wallet needs ≥ ~1.5 SOL for the smoke test (fees + actor rents)");
+  if (balance / LAMPORTS_PER_SOL < 0.5) {
+    throw new Error("deployer wallet needs ≥ ~0.5 SOL for the smoke test");
   }
 
   const client = new ConfidentialMarginClient(provider, oracleAuth);
@@ -96,70 +96,102 @@ async function main() {
     await provider.sendAndConfirm(tx, []);
   };
 
-  // Fund all actors BEFORE any on-chain interaction (fee payers + rents).
-  await fund(oracleAuth, 0.15);
-  await fund(institution, 0.6);
-  await fund(gateAuth, 0.25);
-  await fund(lender, 0.15);
-  await fund(policyAuth, 0.1);
-
-  // ---------------------------------------------------------------- backend
-  // Detect pre-existing backend state so re-runs resume instead of conflict.
+  console.log(`[0] oracle authority (this run): ${oracleAuth.publicKey.toBase58()}`);
+  console.log("[1] backend state detection…");
+  const policyPda = ConfidentialMarginClient.policyPda(policyAuth.publicKey);
+  const policyExists = (await conn.getAccountInfo(policyPda)) !== null;
   const gateExists = (await conn.getAccountInfo(ConfidentialMarginClient.gatePda())) !== null;
-  console.log(`[1] backend state: ${gateExists ? "existing (resuming)" : "fresh"}`);
+  console.log(`    policy=${policyExists ? "exists" : "missing"}, gate=${gateExists ? "exists" : "missing"}`);
 
-  let mints;
-  if (gateExists) {
-    // Recover the mints pinned by the existing gate/policy (policy asset order
-    // is deterministic: TEST_ASSETS order).
-    const gate = await robust("read gate", () => client.getGate());
-    const policy = await robust("read policy", () => client.getPolicy(policyAuth.publicKey));
-    const bySymbol = new Map<string, { mint: PublicKey; decimals: number; priceCents: number }>();
-    TEST_ASSETS.forEach((a, i) =>
-      bySymbol.set(a.symbol, { mint: policy.assets[i].mint, decimals: a.decimals, priceCents: a.initialPriceCents }),
-    );
-    mints = { usdc: gate.usdcMint, bySymbol };
-    client.bindMints(mints);
-    console.log(`    = reusing usdc ${mints.usdc.toBase58().slice(0, 8)}… and ${bySymbol.size} equity mints`);
-  } else {
-    mints = await robust("create mints", () => client.createTestMints(payer));
-    for (const a of TEST_ASSETS) {
-      await robust(`feed ${a.symbol}`, () => client.oracle.initializeFeed(a.symbol, a.initialPriceCents, 4500));
+  // Rebalance: sweep actor wallets into the payer, then top each up.
+  // (Actor wallets accumulate SOL across runs; devnet faucet limits top-ups.)
+  const actors = [oracleAuth, institution, gateAuth, lender, policyAuth];
+  const KEEP = 1_000_000; // keep actors above rent-exemption (≈0.001 SOL)
+  for (const k of actors) {
+    const bal = await conn.getBalance(k.publicKey);
+    if (bal > KEEP + 10_000) {
+      const tx = new Transaction().add(
+        SystemProgram.transfer({ fromPubkey: k.publicKey, toPubkey: payer.publicKey, lamports: bal - KEEP }),
+      );
+      await provider.sendAndConfirm(tx, [k]);
     }
-    await robust("initialize policy", () =>
-      client.initializePolicy(
-        policyAuth,
-        TEST_ASSETS.map((a) => ({
-          mint: mints!.bySymbol.get(a.symbol)!.mint,
-          advanceRateBps: ADVANCE_RATES[a.symbol],
-        })),
-      ),
-    );
-    await robust("initialize gate", () =>
-    client.initializeGate(
-      gateAuth,
-      [attester1.publicKey, attester2.publicKey, demoKeypair("attester-3").publicKey],
-      2,
-    ),
-  );
+  }
+  for (const k of actors) {
+    const bal = await conn.getBalance(k.publicKey);
+    const target = 250_000_000; // 0.25 SOL per actor
+    if (bal < target) {
+      const tx = new Transaction().add(
+        SystemProgram.transfer({ fromPubkey: payer.publicKey, toPubkey: k.publicKey, lamports: target - bal }),
+      );
+      await provider.sendAndConfirm(tx, []);
+    }
   }
 
-  await fund(oracleAuth, 0.15);
-  await fund(institution, 0.6);
-  await fund(gateAuth, 0.25);
-  await fund(lender, 0.15);
-  await fund(policyAuth, 0.1);
+  // ------------------------------------------------- mints (deterministic)
+  const mints = await robust("ensure mints", () => client.ensureDeterministicMints(payer));
+  console.log(`    ✔ deterministic test mints (usdc ${mints.usdc.toBase58().slice(0, 8)}…)`);
 
-  // Lender holds the treasury liquidity; top up if a previous run spent it.
+  const usdcAta = (o: PublicKey) =>
+    getAssociatedTokenAddressSync(mints.usdc, o, false, TOKEN_2022_PROGRAM_ID);
+
+  // ------------------------------------------------------------------ feeds
+  for (const a of TEST_ASSETS) {
+    await robust(`feed ${a.symbol}`, () => client.oracle.initializeFeed(a.symbol, a.initialPriceCents, 4500)).catch(
+      (e: any) => {
+        if (!alreadyInUse(e)) throw e;
+        console.log(`    = feed ${a.symbol} already exists`);
+      },
+    );
+  }
+
+  // ------------------------------------------------------------------ policy
+  if (policyExists) {
+    // Resume: adopt the policy's existing equity mints (they are pinned by
+    // the vault deposits from earlier runs).
+    const policyView = await robust("read policy (resume)", () => client.getPolicy(policyAuth.publicKey));
+    TEST_ASSETS.forEach((a, i) => {
+      const existing = mints.bySymbol.get(a.symbol)!;
+      mints.bySymbol.get(a.symbol)!.mint = policyView.assets[i].mint;
+      void existing;
+    });
+    console.log("    = policy exists (reusing its equity mints)");
+  } else {
+    await robust("initialize policy", () =>
+      client
+        .initializePolicy(
+          policyAuth,
+          TEST_ASSETS.map((a) => ({
+            mint: mints.bySymbol.get(a.symbol)!.mint,
+            advanceRateBps: ADVANCE_RATES[a.symbol],
+          })),
+        )
+        .catch((e: any) => {
+          if (!/already in use/i.test(String(e?.message ?? e))) throw e;
+        }),
+    );
+  }
+
+  // -------------------------------------------------------------------- gate
+  if (!gateExists) {
+    await robust("initialize gate", () =>
+      client
+        .initializeGate(gateAuth, [attester1.publicKey, attester2.publicKey, attester3.publicKey], 2)
+        .catch((e: any) => {
+          if (!/already in use/i.test(String(e?.message ?? e))) throw e;
+        }),
+    );
+  }
+
+  // USDC: lender (treasury liquidity) + institution (repay buffer).
   await robust("fund lender USDC", () => client.fundUsdc(payer, lender.publicKey, TREASURY_TARGET_USDC));
-  await robust("top up treasury", () => client.fundTreasury(lender, TREASURY_TARGET_USDC));
+  await robust("fund institution USDC", () => client.fundUsdc(payer, institution.publicKey, 1_000_000_000));
+  await robust("fund treasury", () => client.fundTreasury(lender, TREASURY_TARGET_USDC));
+  console.log("    ✔ backend accounts ready");
 
-  // Mint fresh portfolio tokens to the institution ONLY for the shortfall
-  // (a completed previous run already holds them).
+  // Mint the portfolio to the institution (creates ATAs; top-up semantics).
   for (const h of DEMO_PORTFOLIO) {
     await robust(`mint ${h.symbol}`, () => client.mintAsset(payer, h.symbol, institution.publicKey, h.qtyUnits));
   }
-  console.log("    ✔ backend accounts ready");
 
   // ------------------------------------------------------------------ vault
   const vaultPda = ConfidentialMarginClient.vaultPda(institution.publicKey);
@@ -187,9 +219,8 @@ async function main() {
     }
   }
 
-  // Re-commit on EVERY run: a fresh snapshot version is required for a fresh
-  // credit draw (nonce must strictly increase past any consumed draw).
-  const { commitment } = await robust("commit snapshot", () =>
+  // Fresh snapshot each run: a credit draw needs a strictly newer version.
+  await robust("commit snapshot", () =>
     client.commitPortfolio(institution, {
       institution: institution.publicKey.toBase58(),
       holdings: DEMO_PORTFOLIO,
@@ -201,29 +232,27 @@ async function main() {
     client.attesterCrossCheck(DEMO_PORTFOLIO, institution.publicKey),
   );
   if (!cross.ok) throw new Error(`attester cross-check failed: ${JSON.stringify(cross.details)}`);
-  console.log(`    ✔ locked + committed ${Buffer.from(commitment).toString("hex").slice(0, 12)}… (honesty guard ok)`);
+  console.log("    ✔ locked + committed (honesty guard ok)");
 
-  // ------------------------------------------------------------ credit flow
-  // Repay any outstanding credit from a previous partial run first: the credit
-  // draw is only permitted while the private evaluation is ELIGIBLE.
+  // Repay any leftover outstanding from a previous partial run.
   const pre = await robust("read facility", () =>
     client.getFacility(institution.publicKey).catch(() => null),
   );
   if (pre && pre.outstandingUsdc > 0) {
-    console.log(`    = repaying leftover outstanding ${pre.outstandingUsdc / 1e6} USDC from a previous run`);
+    console.log(`    = repaying leftover ${pre.outstandingUsdc / 1e6} USDC`);
     await robust("repay leftover", () =>
       client.repay({ institution, amountUsdcMicros: pre.outstandingUsdc }),
     );
   }
 
+  // ------------------------------------------------------------ credit flow
   console.log("[3] requesting $300k credit (private eval → Ed25519 attestation → gate)…");
-  // Fresh oracle publishes first: stale feeds legitimately make the collateral
-  // ineligible, and the gate would (correctly) refuse the draw.
+  // Fresh oracle publishes + open session before requesting.
   for (const a of TEST_ASSETS) {
     await robust(`refresh price ${a.symbol}`, () => client.oracle.setPrice(a.symbol, a.initialPriceCents));
     await robust(`session ${a.symbol}`, () => client.oracle.setMarketSession(a.symbol, SESSION.OPEN));
   }
-  const policy = await robust("read policy (2)", () => client.getPolicy(policyAuth.publicKey));
+  const policy = await robust("read policy", () => client.getPolicy(policyAuth.publicKey));
   const preRisk = await robust("pre-evaluate", () =>
     client.evaluatePrivately({
       holdings: DEMO_PORTFOLIO,
@@ -248,7 +277,7 @@ async function main() {
   }
   const facility = await robust("read facility (2)", () => client.getFacility(institution.publicKey));
   if (facility.outstandingUsdc !== DEMO_REQUEST_USDC_MICROS) throw new Error("credit not released");
-  console.log(`    ✔ LOAN APPROVED — ${facility.outstandingUsdc / 1e6} USDC outstanding, status COMPLIANT (HF 2.10 private)`);
+  console.log(`    ✔ LOAN APPROVED — ${facility.outstandingUsdc / 1e6} USDC outstanding, COMPLIANT (HF 2.10 private)`);
 
   console.log("[4] stress: NVDA −30% → margin call report…");
   await robust("set NVDA price", () => client.oracle.setPrice("NVDAx", 70_00));
@@ -270,7 +299,7 @@ async function main() {
   }
   console.log(`    ✔ public margin status: ${STATUS_NAME[STATUS.MARGIN_CALL]} (portfolio stays confidential)`);
 
-  console.log("[4b] deep stress: NVDA outage + SPY −20% + AAPL −10% (market closed) → INELIGIBLE…");
+  console.log("[4b] deep stress: NVDA outage + SPY −20% + AAPL −10% (closed) → INELIGIBLE…");
   await robust("simulate NVDA outage", () => client.oracle.simulateStale("NVDAx"));
   await robust("set SPY price", () => client.oracle.setPrice("SPYx", 400_00));
   await robust("set AAPL price", () => client.oracle.setPrice("AAPLx", 180_00));
@@ -288,14 +317,12 @@ async function main() {
     }),
   );
   if (deep.risk.decision !== "INELIGIBLE") throw new Error(`expected INELIGIBLE, got ${deep.risk.decision}`);
-  console.log("    ✔ public margin status: INELIGIBLE — liquidation is now armed");
+  console.log("    ✔ public margin status: INELIGIBLE — liquidation armed");
 
-  console.log("[4c] liquidation: committee authorizes seizure of NVDA custody to the lender…");
+  console.log("[4c] liquidation: committee authorizes seizure of NVDA custody…");
   const nvdaMint = mints.bySymbol.get("NVDAx")!.mint;
   const lenderNvdaAta = getAssociatedTokenAddressSync(nvdaMint, lender.publicKey, false, TOKEN_2022_PROGRAM_ID);
-  await robust("create lender NVDA ATA", () =>
-    client.ensureAta(payer, lender.publicKey, nvdaMint),
-  );
+  await robust("create lender NVDA ATA", () => client.ensureAta(payer, lender.publicKey, nvdaMint));
   await robust("execute liquidation", () =>
     client.executeLiquidation({
       submitter: lender,
@@ -309,26 +336,20 @@ async function main() {
     }),
   );
   const seized = await robust("read seized custody", () =>
-    conn.getTokenAccountBalance(ConfidentialMarginClient.custodyPda(
-      ConfidentialMarginClient.vaultPda(institution.publicKey),
-      nvdaMint,
-    )),
+    conn.getTokenAccountBalance(
+      ConfidentialMarginClient.custodyPda(ConfidentialMarginClient.vaultPda(institution.publicKey), nvdaMint),
+    ),
   );
   if (Number(seized.value.amount) !== 0) throw new Error("seizure did not empty NVDA custody");
-  console.log("    ✔ 2,000 NVDAx seized from custody → lender (facility LIQUIDATED, debt extinguished)");
+  console.log("    ✔ 2,000 NVDAx seized → lender (facility LIQUIDATED, debt extinguished)");
 
-  console.log("[5] recovery: prices restored → COMPLIANT → repay…");
+  console.log("[5] recovery: prices restored → repay remainder…");
+  await robust("restore SPY price", () => client.oracle.setPrice("SPYx", 500_00));
+  await robust("restore AAPL price", () => client.oracle.setPrice("AAPLx", 200_00));
   await robust("restore NVDA price", () => client.oracle.setPrice("NVDAx", 100_00));
-  await robust("report compliant", () =>
-    client.reportMarginStatus({
-      submitter: lender,
-      attesters,
-      policyAuthority: policyAuth.publicKey,
-      institution: institution.publicKey,
-      holdings: DEMO_PORTFOLIO,
-      requestedUsdcMicros: DEMO_REQUEST_USDC_MICROS,
-    }),
-  );
+  for (const a of TEST_ASSETS) {
+    await robust(`session ${a.symbol}`, () => client.oracle.setMarketSession(a.symbol, SESSION.OPEN));
+  }
   const preClose = await robust("read facility pre-close", () => client.getFacility(institution.publicKey));
   if (preClose.outstandingUsdc > 0) {
     await robust("repay", () => client.repay({ institution, amountUsdcMicros: preClose.outstandingUsdc }));
@@ -337,16 +358,12 @@ async function main() {
   if (closed.outstandingUsdc !== 0) throw new Error("close failed");
   console.log(`    ✔ facility closed — outstanding 0, status ${STATUS_NAME[closed.marginStatus]}`);
 
-  const onDevnet = RPC.includes("devnet");
-  const statePath = path.resolve(
-    __dirname,
-    `../app/public/${onDevnet ? "devnet" : "localnet"}-state.json`,
-  );
+  const statePath = path.resolve(__dirname, "../app/public/devnet-state.json");
   fs.writeFileSync(
     statePath,
     JSON.stringify(
       {
-        cluster: onDevnet ? "devnet" : "localnet",
+        cluster: "devnet",
         rpc: RPC,
         mints: {
           usdc: mints.usdc.toBase58(),

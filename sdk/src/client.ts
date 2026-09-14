@@ -25,6 +25,7 @@ import {
   demoKeypair,
   POLICY_ID,
   PROGRAM_IDS,
+  seedFor,
   TEST_ASSETS,
   USDC_DECIMALS,
 } from "./config";
@@ -132,8 +133,9 @@ export class ConfidentialMarginClient {
     )[0];
   }
   static vaultPda(institution: PublicKey): PublicKey {
+    // v2 seed: the on-chain layout changed in the v2 hardening pass.
     return PublicKey.findProgramAddressSync(
-      [Buffer.from("vault"), institution.toBuffer()],
+      [Buffer.from("vault"), institution.toBuffer(), Buffer.from("v2")],
       PROGRAM_IDS.confidentialVault,
     )[0];
   }
@@ -152,6 +154,28 @@ export class ConfidentialMarginClient {
   }
 
   // ----------------------------------------------------------------- setup
+
+  /**
+   * Deterministic TEST mints (addresses derived from actor seeds) — safe to
+   * call repeatedly: existing mints are reused, missing ones created.
+   */
+  async ensureDeterministicMints(payer: Keypair): Promise<TestMints> {
+    const mk = async (symbol: string, decimals: number, keySeed: string) => {
+      const kp = Keypair.fromSeed(seedFor(`mint:${keySeed}`));
+      if (!(await this.provider.connection.getAccountInfo(kp.publicKey))) {
+        await createMint(this.provider.connection, payer, payer.publicKey, null, decimals, kp, undefined, TOKEN_2022_PROGRAM_ID);
+      }
+      return kp.publicKey;
+    };
+    const usdc = await mk("USDC", USDC_DECIMALS, "USDC");
+    const bySymbol = new Map<string, { mint: PublicKey; decimals: number; priceCents: number }>();
+    for (const a of TEST_ASSETS) {
+      const mint = await mk(`mint:${a.symbol}`, a.decimals, `mint:${a.symbol}`);
+      bySymbol.set(a.symbol, { mint, decimals: a.decimals, priceCents: a.initialPriceCents });
+    }
+    this.mints = { usdc, bySymbol };
+    return this.mints;
+  }
 
   /** Create clearly-labelled TEST Token-2022 mints. NOT production xStocks. */
   async createTestMints(payer: Keypair): Promise<TestMints> {

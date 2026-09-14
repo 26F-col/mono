@@ -13,7 +13,13 @@ import type { TestMints } from "@sdk/client";
 const params = new URLSearchParams(window.location.search);
 export const CLUSTER: "localnet" | "devnet" =
   params.get("cluster") === "devnet" ? "devnet" : "localnet";
-export const RPC_URL = CLUSTER === "devnet" ? "https://api.devnet.solana.com" : LOCALNET_URL;
+// Devnet RPC: set VITE_DEVNET_RPC in app/.env.local (e.g. a Helius endpoint)
+// to avoid api.devnet.solana.com's aggressive per-IP limits.
+export const RPC_URL =
+  CLUSTER === "devnet"
+    ? (import.meta.env.VITE_DEVNET_RPC as string | undefined) ??
+      "https://api.devnet.solana.com"
+    : LOCALNET_URL;
 const STATE_FILE = CLUSTER === "devnet" ? "/devnet-state.json" : "/demo-state.json";
 
 import mockOracleIdl from "./idl/mock_oracle.json";
