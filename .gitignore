@@ -16,6 +16,8 @@ tmp
 .debug-ledger*
 app/public/demo-state.json
 app/public/localnet-state.json
+app/public/devnet-state.json
+app/public/localnet-state.json
 
 # rust
 **/*.rs.bk
