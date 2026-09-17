@@ -41,7 +41,7 @@ import {clearTimeout} from "node:timers";
  *        Pyth-unlicensed fallback shape (priceCents: -1, isStale: true).
  */
 
-const DEFAULT_XSTOCKS_API = "https://api.xstocks.fi/api/v2";
+export const DEFAULT_XSTOCKS_API = "https://api.xstocks.fi/api/v2";
 
 interface XStocksPriceData {
     quote: number | null;
