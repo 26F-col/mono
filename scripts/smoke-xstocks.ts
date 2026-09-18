@@ -108,7 +108,7 @@ async function main() {
                 fail(`${symbol} - feed.symbol=${feed.symbol} (key desynchronization)`, coldErrors);
             }
             console.log(
-                `  [cold] ${symbol}: pricesCents=${feed.priceCents} marketSession=${feed.marketSession} isStale=${feed.isStale}`,
+                `  [cold] ${symbol}: pricesCent=${feed.priceCents} marketSession=${feed.marketSession} isStale=${feed.isStale}`,
             );
             if (feed.priceCents <= 0 || feed.isStale) {
                 fail(
