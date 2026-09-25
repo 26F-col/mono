@@ -30,8 +30,8 @@ private: individual quantities, prices, confidence intervals
 | decision | choice | why |
 |---|---|---|
 | Commitment hash | Poseidon (BN254) | ZK-friendly; proven in production (Light Protocol, AZTEC) |
-| Proof system | Groth16 (ark-bn254) | Smallest proof + cheapest on-chain verify; mature Rust tooling (ark-groth16) |
-| Circuit language | Arkworks (Rust) | Same language as the programs; no circom/TS toolchain split |
+| Proof system | Groth16 (BN254) | Small proofs and efficient on-chain verification; compatible with Circom circuits |
+| Circuit language | Circom | Selected for the planned full margin circuit, including Poseidon commitments and constrained risk calculations |
 | On-chain verifier | Deploy a Groth16 verifier for the margin circuit | ~200k CU per verify (fixed); acceptable at current devnet CU limits |
 | Confidence intervals | Public inputs (verified Pyth conf fields) | Conservative pricing at the policy level |
 
@@ -54,6 +54,10 @@ Files: `risk/zk/` — Poseidon-3 hash, commitment scheme, threshold check.
 Tests: `tests/zk-milestone.ts` — commitment binding, threshold pass/fail.
 
 ## Full Groth16 circuit (next build phase)
+
+We will use **Circom** to implement the full margin circuit. This is planned
+work, not part of the current TypeScript threshold-check prototype; on-chain
+credit verification still relies on the Ed25519 attester committee.
 
 The circuit encodes:
 1. Poseidon preimage check: commitment = Poseidon([qty_i..., salt])
