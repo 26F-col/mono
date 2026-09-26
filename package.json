@@ -1,8 +1,16 @@
 {
-  "name": "confidential-margin",
+  "name": "mono",
   "version": "0.1.0",
   "private": true,
   "description": "Confidential portfolio margin layer for tokenized stocks on Solana (hackathon prototype)",
+  "workspaces": [
+    "programs/*",
+    "sdk",
+    "app",
+    "tests",
+    "scripts",
+    "circuits"
+  ],
   "scripts": {
     "build": "anchor build",
     "test": "anchor test",
@@ -12,13 +20,17 @@
     "sync-idl": "bash scripts/sync-idl.sh",
     "privacy-audit": "tsx scripts/privacy-audit.ts localnet && tsx scripts/privacy-audit.ts devnet",
     "test:zk": "ts-mocha -p ./tsconfig.json tests/zk-milestone.ts",
-    "gen-golden": "tsx scripts/gen-golden-vectors.ts"
+    "gen-golden": "tsx scripts/gen-golden-vectors.ts",
+    "circuits:compile": "yarn workspace @cml/circuits compile",
+    "circuits:setup": "yarn workspace @cml/circuits setup",
+    "circuits:clean": "yarn workspace @cml/circuits clean"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
     "@solana/spl-token": "^0.4.9",
     "@solana/web3.js": "^1.95.8",
     "poseidon-lite": "^0.3.0",
+    "snarkjs": "^0.7.6",
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {

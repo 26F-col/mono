@@ -24,3 +24,24 @@ app/public/localnet-state.json
 app/public/devnet-state.json
 .env.local
 app/.env.local
+
+# Circom & Zero-Knowledge Artifacts
+
+# Intermediate compiler files & constraint systems
+circuits/build/
+*.r1cs
+*.sym
+*.wtns
+
+# JS/WASM generated witness runners (transient build outputs)
+circuits/src/*_js/
+*_js/
+
+# Trusted setup transcripts & large cryptographic keys
+circuits/keys/
+*.ptau
+*.zkey
+
+# Never ignore circuit source files or the tiny public verification key
+!circuits/artifacts/verification_key.json
+!circuits/src/**/*.circom

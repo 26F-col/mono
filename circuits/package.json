@@ -1,0 +1,19 @@
+{
+  "name": "@cml/circuits",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "compile": "bash scripts/compile.sh",
+    "setup": "bash scripts/setup.sh",
+    "clean": "rm -rf build keys"
+  },
+  "dependencies": {
+    "circomlib": "^2.0.5",
+    "circomlibjs": "^0.1.7",
+    "snarkjs": "^0.7.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
