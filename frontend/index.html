@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f8fd" />
+    <title>Borrowing — Credit Marketplace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell" id="appShell">
+      <aside class="sidebar" id="sidebar" aria-label="Main navigation"></aside>
+      <div class="workspace">
+        <header class="topbar">
+          <button class="icon-button menu-toggle" id="menuToggle" aria-label="Open navigation">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16M4 12h16M4 17.5h16" /></svg>
+          </button>
+          <div class="topbar-actions">
+            <button class="icon-button notification-button" aria-label="Notifications" data-action="notifications">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" /></svg>
+            </button>
+            <button class="wallet-button" id="walletToggle" data-action="wallet"></button>
+          </div>
+        </header>
+        <main id="mainContent" class="main-content"></main>
+      </div>
+    </div>
+    <div id="modalRoot"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js" defer></script>
+  </body>
+</html>
